@@ -26,17 +26,45 @@ async function run() {
     // await client.connect();
 
     const jobCollection = client.db('career-code').collection('jobs')
+    const jobApplication = client.db('career-code').collection('applications')
 
-    app.get('/jobs', async(req, res)=>{
-        const result = await jobCollection.find().toArray()
-        res.send(result)
+    app.get('/jobs', async (req, res) => {
+      const result = await jobCollection.find().toArray()
+      res.send(result)
     })
 
-    app.get('/jobs/:id', async(req,res)=>{
-        const id = req.params.id
-        const query = {_id : new ObjectId(id)}
-        const result = await jobCollection.findOne(query)
-        res.send(result)
+    app.get('/jobs/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await jobCollection.findOne(query)
+      res.send(result)
+    })
+
+    app.get('/applications', async (req, res) => {
+      const email = req.query.email
+      const query = {
+        applicant : email
+      }
+      const result = await jobApplication.find(query).toArray()
+
+      // connect a collection with anouther collection
+      // bad way
+      for(const application of result){
+        const id = application.jobId
+        const jobQuery = {_id : new ObjectId(id)}
+        const job = await jobCollection.findOne(jobQuery)
+        application.company = job.company
+        application.title = job.title
+        application.company_logo = job.company_logo
+      }
+
+      res.send(result)
+    })
+
+    app.post('/applications', async (req, res) => {
+      const application = req.body
+      const result = await jobApplication.insertOne(application)
+      res.send(result)
     })
 
     // Send a ping to confirm a successful connection
@@ -50,10 +78,10 @@ async function run() {
 run().catch(console.dir);
 
 
-app.get('/', (req, res)=>{
-    res.send('carrer code is running')
+app.get('/', (req, res) => {
+  res.send('carrer code is running')
 })
 
-app.listen(port, ()=>{
-    console.log(`carrer code is running on port: ${port}`);
+app.listen(port, () => {
+  console.log(`carrer code is running on port: ${port}`);
 })
