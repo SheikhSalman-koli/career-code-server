@@ -4,38 +4,68 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken')
 const cookieparser = require('cookie-parser')
 const app = express()
+
+const admin = require("firebase-admin");
+const serviceAccount = require("./firebase-adminsdk-fbsvc-c35a292743.json");
+
 const port = process.env.PORT || 3000
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 // middle ware
 app.use(cors({
   origin: ['http://localhost:5173'],
-  credentials:true
+  credentials: true
 }))
 app.use(express.json())
 app.use(cookieparser())
 
-const logger = (req, res, next) =>{
-    console.log('inside the logger middleware');
-    next()
-}
+// const logger = (req, res, next) =>{
+//     console.log('inside the logger middleware');
+//     next()
+// }
 
-const verifyToken = (req, res, next) =>{
-  const token = req?.cookies?.token
-  console.log('cookies in the middleware', token);
+// const verifyToken = (req, res, next) =>{
+//   const token = req?.cookies?.token
+//   // console.log('cookies in the middleware', token);
 
-  if(!token){
-    return res.status(401).send({message: 'unauthorized access'})
-  }
-  // verify token
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded)=>{
-    if(err){
-      return res.status(401).send({message: 'unauthorized access'})
-    }
-    req.decoded = decoded
+//   if(!token){
+//     return res.status(401).send({message: 'unauthorized access'})
+//   }
+//   // verify token
+//   jwt.verify(token, process.env.JWT_SECRET, (err, decoded)=>{
+//     if(err){
+//       return res.status(401).send({message: 'unauthorized access'})
+//     }
+//     req.decoded = decoded
    
+//     next()
+//   })
+// }
+
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+
+const verifyFirebaseToken = async(req,res,next)=>{
+  const authHeader = req.headers.authorization
+  //  console.log(authHeader);
+  if(!authHeader || !authHeader.startsWith('Bearer ')){
+     return res.status(401).send({message: 'unauthorized access'})
+  }
+  const token = authHeader.slipt(' ')[1]
+
+  try{
+    const decoded = await admin.auth().verifyIdToken(token)
+    console.log('this is token',decoded);
+    req.decoded = decoded
     next()
-  })
+  }
+  catch (error){
+   return res.status(401).send({message: 'unauthorized access'})
+  }
+  // console.log(token);
 }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.dclhmji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -57,17 +87,16 @@ async function run() {
     const jobApplication = client.db('career-code').collection('applications')
 
     // jwt token api
-   app.post('/jwt', (req,res)=>{
-      const userData = req.body
-      const token = jwt.sign(userData, process.env.JWT_SECRET, {expiresIn: '1d'})
-
-      // set the token in cookie 
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: false
-      })
-      res.send({success: true})
-   })
+  //  app.post('/jwt', (req,res)=>{
+  //     const userData = req.body
+  //     const token = jwt.sign(userData, process.env.JWT_SECRET, {expiresIn: '1d'})
+  //     // set the token in cookie 
+  //     res.cookie('token', token, {
+  //       httpOnly: true,
+  //       secure: false
+  //     })
+  //     res.send({success: true})
+  //  })
 
     app.get('/jobs', async (req, res) => {
       const email = req.query.email
@@ -117,13 +146,15 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/applications',logger,verifyToken, async (req, res) => {
+    app.get('/applications',verifyFirebaseToken, async (req, res) => {
+     
       const email = req.query.email
+
       // console.log('cookies',req.cookies);
       if(email !== req.decoded.email){
          return res.status(403).send({message: 'forbidden access'})
-         
       }
+
       const query = {
         applicant: email
       }
