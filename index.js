@@ -65,7 +65,7 @@ const verifyFirebaseToken = async(req,res,next)=>{
   catch (error){
    return res.status(401).send({message: 'unauthorized access'})
   }
-  // console.log(token);
+  
 }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.dclhmji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
