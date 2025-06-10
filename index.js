@@ -6,8 +6,9 @@ const cookieparser = require('cookie-parser')
 const app = express()
 
 const admin = require("firebase-admin");
-const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
-const serviceAccount = JSON.parse(decoded)
+const secret = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const cleanedSecret = secret.replace(/[\u0000-\u001F]/g, "")
+const serviceAccount = JSON.parse(cleanedSecret)
 
 const port = process.env.PORT || 3000
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
