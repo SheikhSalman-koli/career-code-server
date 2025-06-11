@@ -1,25 +1,20 @@
 require('dotenv').config()
 const express = require('express');
 const cors = require('cors');
-const jwt = require('jsonwebtoken')
-const cookieparser = require('cookie-parser')
 const app = express()
 
 const admin = require("firebase-admin");
+
 const secret = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
-const cleanedSecret = secret.replace(/[\u0000-\u001F]/g, "")
-const serviceAccount = JSON.parse(cleanedSecret)
+const serviceAccount = JSON.parse(secret)
 
 const port = process.env.PORT || 3000
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 // middle ware
-app.use(cors({
-  origin: ['http://localhost:5173'],
-  credentials: true
-}))
+app.use(cors())
 app.use(express.json())
-app.use(cookieparser())
+
 
 // const logger = (req, res, next) =>{
 //     console.log('inside the logger middleware');
@@ -66,8 +61,8 @@ const verifyFirebaseToken = async(req,res,next)=>{
   if(!authHeader || !authHeader.startsWith('Bearer ')){
      return res.status(401).send({message: 'unauthorized access'})
   }
-  const token = authHeader.slipt(' ')[1]
-
+  const token = authHeader.split(' ')[1]
+  
   try{
     const decoded = await admin.auth().verifyIdToken(token)
     console.log('this is token',decoded);
